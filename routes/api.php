@@ -23,8 +23,17 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
     // -------------------------------------------------------------
-    // 1. Publik (Google OAuth)
+    // 1. Publik (Health Check & Google OAuth)
     // -------------------------------------------------------------
+    Route::get('/ping', function () {
+        return response()->json([
+            'status' => 'online',
+            'app' => 'Berkah Store POS API',
+            'version' => '2.0.0',
+            'server_time' => now()->toIso8601String(),
+        ]);
+    });
+
     Route::post('/auth/google', [AuthController::class, 'loginWithGoogle']);
 
     // -------------------------------------------------------------
