@@ -47,10 +47,25 @@ return new class extends Migration
 
             $table->index('id_nota_distributor');
         });
+
+        Schema::create('pembayaran_distributors', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('id_nota_distributor')->constrained('nota_distributors')->cascadeOnDelete();
+            $table->foreignId('id_user')->constrained('users')->cascadeOnDelete();
+            $table->decimal('jumlah_bayar', 15, 2);
+            $table->date('tanggal_bayar');
+            $table->string('metode_pembayaran', 30)->default('Transfer Bank');
+            $table->string('bukti_bayar')->nullable();
+            $table->text('catatan')->nullable();
+            $table->timestamps();
+
+            $table->index(['id_nota_distributor', 'created_at']);
+        });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('pembayaran_distributors');
         Schema::dropIfExists('detail_nota_distributors');
         Schema::dropIfExists('nota_distributors');
         Schema::dropIfExists('distributors');

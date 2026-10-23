@@ -48,4 +48,9 @@ class KasHarian extends Model
     {
         return $this->belongsTo(Transaksi::class, 'id_transaksi');
     }
+
+    public function pembayaranPiutang(): BelongsTo
+    {
+        return $this->belongsTo(PembayaranPiutang::class, 'id_pembayaran_piutang');
+    }
 }

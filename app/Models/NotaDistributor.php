@@ -42,4 +42,9 @@ class NotaDistributor extends Model
     {
         return $this->hasMany(DetailNotaDistributor::class, 'id_nota_distributor');
     }
+
+    public function pembayarans(): HasMany
+    {
+        return $this->hasMany(PembayaranDistributor::class, 'id_nota_distributor');
+    }
 }
