@@ -34,14 +34,26 @@ require __DIR__.'/../vendor/autoload.php';
 
 $app = require_once __DIR__.'/../bootstrap/app.php';
 
-if (method_exists($app, 'handleRequest')) {
-    // Laravel 11 handle request
-    $app->handleRequest(Request::capture());
-} else {
-    // Laravel 10 kernel handle request
-    $kernel = $app->make(Kernel::class);
-    $response = $kernel->handle(
-        $request = Request::capture()
-    )->send();
-    $kernel->terminate($request, $response);
+try {
+    if (method_exists($app, 'handleRequest')) {
+        // Laravel 11 handle request
+        $app->handleRequest(Request::capture());
+    } else {
+        // Laravel 10 kernel handle request
+        $kernel = $app->make(Kernel::class);
+        $response = $kernel->handle(
+            $request = Request::capture()
+        )->send();
+        $kernel->terminate($request, $response);
+    }
+} catch (\Throwable $e) {
+    header('Content-Type: application/json', true, 500);
+    echo json_encode([
+        'success' => false,
+        'error_type' => get_class($e),
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+    ], JSON_PRETTY_PRINT);
+    exit;
 }
