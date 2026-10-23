@@ -29,11 +29,27 @@ class Handler extends ExceptionHandler
 
         $this->renderable(function (Throwable $e, $request) {
             if ($request->is('api/*') || $request->expectsJson()) {
-                $status = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 500;
-                return response()->json([
+                $status = 500;
+                if ($e instanceof \Illuminate\Auth\AuthenticationException) {
+                    $status = 401;
+                } elseif ($e instanceof \Illuminate\Validation\ValidationException) {
+                    $status = 422;
+                } elseif (method_exists($e, 'getStatusCode')) {
+                    $status = $e->getStatusCode();
+                } elseif (isset($e->status)) {
+                    $status = $e->status;
+                }
+
+                $response = [
                     'success' => false,
                     'message' => $e->getMessage() ?: 'Server Error',
-                ], $status);
+                ];
+
+                if (method_exists($e, 'errors')) {
+                    $response['errors'] = $e->errors();
+                }
+
+                return response()->json($response, $status);
             }
         });
     }
