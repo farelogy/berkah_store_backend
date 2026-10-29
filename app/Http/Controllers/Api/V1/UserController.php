@@ -27,7 +27,16 @@ class UserController extends Controller
             $query->where('role', 'pending');
         }
 
-        $users = $query->paginate(20);
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $perPage = (int) $request->query('per_page', 50);
+        $users = $query->paginate($perPage);
 
         return $this->successResponse($users, 'Data user berhasil diambil.');
     }

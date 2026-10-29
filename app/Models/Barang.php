@@ -35,6 +35,11 @@ class Barang extends Model
         return $this->hasMany(StokBarang::class, 'id_barang');
     }
 
+    public function stoks(): HasMany
+    {
+        return $this->hasMany(StokBarang::class, 'id_barang');
+    }
+
     public function riwayatStoks(): HasMany
     {
         return $this->hasMany(RiwayatStok::class, 'id_barang');

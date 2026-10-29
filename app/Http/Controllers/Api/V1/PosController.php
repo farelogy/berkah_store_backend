@@ -161,7 +161,9 @@ class PosController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('tanggal')) {
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        } elseif ($request->filled('tanggal')) {
             $query->whereDate('created_at', $request->tanggal);
         }
 
@@ -187,5 +189,84 @@ class PosController extends Controller
     {
         $transaksi = Transaksi::with(['details.barang', 'pembeli', 'user', 'cabang'])->findOrFail($id);
         return $this->successResponse($transaksi);
+    }
+
+    /**
+     * Audit summary metrics per branch & overall for Admin Pusat.
+     */
+    public function getAuditSummary(Request $request): JsonResponse
+    {
+        $baseQuery = Transaksi::query();
+
+        if ($request->filled('id_cabang')) {
+            $baseQuery->where('id_cabang', $request->id_cabang);
+        }
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $baseQuery->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        } elseif ($request->filled('tanggal')) {
+            $baseQuery->whereDate('created_at', $request->tanggal);
+        }
+
+        if ($request->filled('status')) {
+            $baseQuery->where('status', $request->status);
+        }
+
+        $totalOmzet = (float) (clone $baseQuery)->sum('total_tagihan_akhir');
+        $totalTransaksi = (int) (clone $baseQuery)->count();
+        $totalTunai = (float) (clone $baseQuery)->where('metode_pembayaran', 'like', '%Tunai%')->sum('jumlah_bayar');
+        $totalTransfer = (float) (clone $baseQuery)->where(function ($q) {
+            $q->where('metode_pembayaran', 'like', '%Transfer%')
+              ->orWhere('metode_pembayaran', 'like', '%QRIS%');
+        })->sum('jumlah_bayar');
+        $totalPiutang = (float) (clone $baseQuery)->sum('sisa_piutang');
+        $totalLunas = (int) (clone $baseQuery)->where('status', 'Lunas')->count();
+        $totalBelumLunas = (int) (clone $baseQuery)->where('status', 'Belum Lunas')->count();
+
+        // Branch Breakdown Outlook
+        $cabangs = \App\Models\Cabang::where('is_active', true)->get();
+        $branchOutlook = [];
+
+        foreach ($cabangs as $cabang) {
+            $bQuery = Transaksi::where('id_cabang', $cabang->id);
+            if ($request->filled('start_date') && $request->filled('end_date')) {
+                $bQuery->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+            } elseif ($request->filled('tanggal')) {
+                $bQuery->whereDate('created_at', $request->tanggal);
+            }
+
+            $bOmzet = (float) (clone $bQuery)->sum('total_tagihan_akhir');
+            $bCount = (int) (clone $bQuery)->count();
+            $bPiutang = (float) (clone $bQuery)->sum('sisa_piutang');
+            $bTunai = (float) (clone $bQuery)->where('metode_pembayaran', 'like', '%Tunai%')->sum('jumlah_bayar');
+            $bTransfer = (float) (clone $bQuery)->where(function ($q) {
+                $q->where('metode_pembayaran', 'like', '%Transfer%')
+                  ->orWhere('metode_pembayaran', 'like', '%QRIS%');
+            })->sum('jumlah_bayar');
+
+            $branchOutlook[] = [
+                'id_cabang' => $cabang->id,
+                'nama_cabang' => $cabang->nama_cabang,
+                'alamat' => $cabang->alamat,
+                'total_transaksi' => $bCount,
+                'total_omzet' => $bOmzet,
+                'total_tunai' => $bTunai,
+                'total_transfer' => $bTransfer,
+                'total_piutang' => $bPiutang,
+            ];
+        }
+
+        return $this->successResponse([
+            'summary' => [
+                'total_omzet' => $totalOmzet,
+                'total_transaksi' => $totalTransaksi,
+                'total_tunai' => $totalTunai,
+                'total_transfer' => $totalTransfer,
+                'total_piutang' => $totalPiutang,
+                'total_lunas' => $totalLunas,
+                'total_belum_lunas' => $totalBelumLunas,
+            ],
+            'branch_outlook' => $branchOutlook,
+        ]);
     }
 }

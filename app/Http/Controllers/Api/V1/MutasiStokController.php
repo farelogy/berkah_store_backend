@@ -42,6 +42,12 @@ class MutasiStokController extends Controller
             });
         }
 
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        } elseif ($request->filled('tanggal')) {
+            $query->whereDate('created_at', $request->tanggal);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }

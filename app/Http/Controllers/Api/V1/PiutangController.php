@@ -91,6 +91,12 @@ class PiutangController extends Controller
             $query->where('id_cabang', $request->id_cabang);
         }
 
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
+        } elseif ($request->filled('tanggal')) {
+            $query->whereDate('created_at', $request->tanggal);
+        }
+
         if ($request->filled('id_pembeli')) {
             $query->where('id_pembeli', $request->id_pembeli);
         }

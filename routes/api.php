@@ -1,11 +1,14 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AbsensiController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\BarangController;
 use App\Http\Controllers\Api\V1\CabangController;
 use App\Http\Controllers\Api\V1\DireksiController;
 use App\Http\Controllers\Api\V1\DistributorController;
+use App\Http\Controllers\Api\V1\GajiKaryawanController;
 use App\Http\Controllers\Api\V1\KaryawanController;
+use App\Http\Controllers\Api\V1\KasbonController;
 use App\Http\Controllers\Api\V1\KasOperasionalController;
 use App\Http\Controllers\Api\V1\MutasiStokController;
 use App\Http\Controllers\Api\V1\PembeliController;
@@ -63,6 +66,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('/cart', [PosController::class, 'clearCart']);
             Route::post('/checkout', [PosController::class, 'checkout']);
             Route::get('/transaksis', [PosController::class, 'getTransactions']);
+            Route::get('/audit-summary', [PosController::class, 'getAuditSummary']);
             Route::get('/transaksis/{id}', [PosController::class, 'getTransactionDetail']);
         });
 
@@ -147,11 +151,38 @@ Route::prefix('v1')->group(function () {
             // Master Manajemen Barang & Stok
             Route::post('/barangs', [BarangController::class, 'store']);
             Route::put('/barangs/{id}', [BarangController::class, 'update']);
+            Route::delete('/barangs/{id}', [BarangController::class, 'destroy']);
             Route::post('/barangs/{id}/adjust-stock', [BarangController::class, 'adjustStock']);
+            Route::get('/barangs/{id}/branch-stocks', [BarangController::class, 'getBranchStocks']);
+            Route::post('/barangs/{id}/branch-stocks', [BarangController::class, 'setBranchStocks']);
 
             // Master Manajemen Karyawan
             Route::post('/karyawans', [KaryawanController::class, 'store']);
             Route::put('/karyawans/{id}', [KaryawanController::class, 'update']);
+            Route::post('/karyawans/{id}/toggle-active', [KaryawanController::class, 'toggleActive']);
+            Route::delete('/karyawans/{id}', [KaryawanController::class, 'destroy']);
+
+            // Modul Absensi Pegawai
+            Route::prefix('absensis')->group(function () {
+                Route::get('/', [AbsensiController::class, 'index']);
+                Route::post('/batch', [AbsensiController::class, 'storeBatch']);
+                Route::get('/summary', [AbsensiController::class, 'monthlySummary']);
+            });
+
+            // Modul Kasbon Karyawan
+            Route::prefix('kasbons')->group(function () {
+                Route::get('/', [KasbonController::class, 'index']);
+                Route::post('/', [KasbonController::class, 'store']);
+                Route::put('/{id}', [KasbonController::class, 'update']);
+                Route::delete('/{id}', [KasbonController::class, 'destroy']);
+            });
+
+            // Modul Penggajian Karyawan & Slip Gaji
+            Route::prefix('gaji')->group(function () {
+                Route::get('/draft', [GajiKaryawanController::class, 'calculateDraft']);
+                Route::post('/bayar', [GajiKaryawanController::class, 'bayarGaji']);
+                Route::get('/{id}/slip', [GajiKaryawanController::class, 'slip']);
+            });
         });
     });
 });

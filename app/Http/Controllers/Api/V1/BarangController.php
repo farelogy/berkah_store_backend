@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Barang;
+use App\Models\Cabang;
 use App\Models\RiwayatStok;
 use App\Models\StokBarang;
 use App\Traits\ApiResponse;
@@ -188,6 +189,122 @@ class BarangController extends Controller
                 'nama_barang' => $barang->nama_barang,
                 'stok_terkini' => $stokRow->stok,
             ], 'Stok berhasil disesuaikan');
+        });
+    }
+
+    /**
+     * Delete or deactivate master product.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $barang = Barang::findOrFail($id);
+        $barang->update(['is_active' => false]);
+        return $this->successResponse(null, 'Barang master berhasil dinonaktifkan');
+    }
+
+    /**
+     * Get stock of a product across all active branches + Gudang Pusat.
+     */
+    public function getBranchStocks(int $id): JsonResponse
+    {
+        $barang = Barang::findOrFail($id);
+        $cabangs = Cabang::where('is_active', true)->get();
+
+        $pusatStok = StokBarang::where('id_barang', $barang->id)
+            ->where('is_gudang_pusat', true)
+            ->first();
+
+        $result = [
+            [
+                'id_cabang' => null,
+                'nama_cabang' => 'Gudang Pusat & Distribusi',
+                'is_gudang_pusat' => true,
+                'stok' => $pusatStok ? (int) $pusatStok->stok : 0,
+            ],
+        ];
+
+        foreach ($cabangs as $cabang) {
+            $stok = StokBarang::where('id_barang', $barang->id)
+                ->where('id_cabang', $cabang->id)
+                ->where('is_gudang_pusat', false)
+                ->first();
+
+            $result[] = [
+                'id_cabang' => $cabang->id,
+                'nama_cabang' => $cabang->nama_cabang,
+                'is_gudang_pusat' => false,
+                'stok' => $stok ? (int) $stok->stok : 0,
+            ];
+        }
+
+        return $this->successResponse([
+            'id_barang' => $barang->id,
+            'nama_barang' => $barang->nama_barang,
+            'satuan' => $barang->satuan,
+            'branch_stocks' => $result,
+        ]);
+    }
+
+    /**
+     * Directly set physical stock per branch without requiring mutasi tracking.
+     */
+    public function setBranchStocks(Request $request, int $id): JsonResponse
+    {
+        $barang = Barang::findOrFail($id);
+
+        $request->validate([
+            'stocks' => 'required|array',
+            'stocks.*.id_cabang' => 'nullable|integer',
+            'stocks.*.is_gudang_pusat' => 'nullable|boolean',
+            'stocks.*.stok' => 'required|integer|min:0',
+        ]);
+
+        return DB::transaction(function () use ($request, $barang) {
+            $updated = [];
+
+            foreach ($request->stocks as $item) {
+                $isPusat = !empty($item['is_gudang_pusat']);
+                $idCabang = $isPusat ? null : ($item['id_cabang'] ?? null);
+                $newStok = (int) $item['stok'];
+
+                $stokRow = StokBarang::firstOrCreate(
+                    [
+                        'id_barang' => $barang->id,
+                        'id_cabang' => $idCabang,
+                        'is_gudang_pusat' => $isPusat,
+                    ],
+                    ['stok' => 0]
+                );
+
+                $prevStok = $stokRow->stok;
+                $stokRow->stok = $newStok;
+                $stokRow->save();
+
+                $diff = $newStok - $prevStok;
+                if ($diff !== 0) {
+                    RiwayatStok::create([
+                        'id_barang' => $barang->id,
+                        'id_cabang' => $idCabang,
+                        'id_user' => $request->user()?->id,
+                        'jumlah' => $diff,
+                        'stok_akhir' => $newStok,
+                        'tipe' => 'Setup Awal',
+                        'alasan' => 'Penyesuaian stok cabang langsung (tanpa tracking)',
+                    ]);
+                }
+
+                $updated[] = [
+                    'id_cabang' => $idCabang,
+                    'is_gudang_pusat' => $isPusat,
+                    'stok' => $newStok,
+                ];
+            }
+
+            return $this->successResponse([
+                'id_barang' => $barang->id,
+                'nama_barang' => $barang->nama_barang,
+                'updated_stocks' => $updated,
+            ], 'Stok cabang berhasil disimpan tanpa tracking');
         });
     }
 }
