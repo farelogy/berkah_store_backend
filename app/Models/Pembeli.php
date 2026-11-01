@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Pembeli extends Model
@@ -16,17 +17,24 @@ class Pembeli extends Model
         'nama_pembeli',
         'no_hp',
         'alamat',
-        'tipe_pelanggan',
+        'id_cabang_pendaftaran',
         'saldo',
-        'total_piutang',
+        'sisa_piutang',
+        'limit_piutang',
         'is_active',
     ];
 
     protected $casts = [
         'saldo' => 'decimal:2',
-        'total_piutang' => 'decimal:2',
+        'sisa_piutang' => 'decimal:2',
+        'limit_piutang' => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    public function cabang(): BelongsTo
+    {
+        return $this->belongsTo(Cabang::class, 'id_cabang_pendaftaran');
+    }
 
     public function transaksis(): HasMany
     {
