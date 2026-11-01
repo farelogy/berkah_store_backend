@@ -17,6 +17,7 @@ class Cabang extends Model
         'nama_cabang',
         'nama_tb',
         'alamat',
+        'no_telepon',
         'no_hp',
         'saldo',
         'is_active',

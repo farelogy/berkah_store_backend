@@ -34,7 +34,12 @@ class DistributorController extends Controller
                   ->orWhere('kontak_person', 'like', "%{$request->search}%");
         }
 
-        $distributors = $query->orderBy('nama_distributor', 'asc')->paginate($request->input('per_page', 20));
+        if ($request->boolean('all')) {
+            $distributors = $query->orderBy('nama_distributor', 'asc')->get();
+            return $this->successResponse($distributors);
+        }
+
+        $distributors = $query->orderBy('nama_distributor', 'asc')->paginate($request->input('per_page', 50));
         return $this->successResponse($distributors);
     }
 
@@ -52,6 +57,39 @@ class DistributorController extends Controller
 
         $distributor = $this->distributorService->createDistributor($request->all());
         return $this->successResponse($distributor, 'Distributor berhasil ditambahkan', 201);
+    }
+
+    /**
+     * Update distributor.
+     */
+    public function update(Request $request, int $id): JsonResponse
+    {
+        $request->validate([
+            'nama_distributor' => 'required|string|max:150',
+            'kontak_person' => 'nullable|string|max:100',
+            'no_hp' => 'nullable|string|max:30',
+            'alamat' => 'nullable|string',
+        ]);
+
+        $distributor = Distributor::findOrFail($id);
+        $distributor->update([
+            'nama_distributor' => $request->nama_distributor,
+            'kontak_person' => $request->kontak_person,
+            'no_hp' => $request->no_hp,
+            'alamat' => $request->alamat,
+        ]);
+
+        return $this->successResponse($distributor, 'Distributor berhasil diperbarui');
+    }
+
+    /**
+     * Delete distributor.
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        $distributor = Distributor::findOrFail($id);
+        $distributor->delete();
+        return $this->successResponse(null, 'Distributor berhasil dihapus');
     }
 
     /**
@@ -121,7 +159,22 @@ class DistributorController extends Controller
             $query->where('status', $request->status);
         }
 
-        $notas = $query->orderBy('tanggal_nota', 'desc')->paginate($request->input('per_page', 20));
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('nomor_nota', 'like', "%{$search}%")
+                  ->orWhereHas('distributor', function ($dq) use ($search) {
+                      $dq->where('nama_distributor', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->boolean('all')) {
+            $notas = $query->orderBy('tanggal_nota', 'desc')->get();
+            return $this->successResponse($notas);
+        }
+
+        $notas = $query->orderBy('tanggal_nota', 'desc')->paginate($request->input('per_page', 50));
         return $this->successResponse($notas);
     }
 }

@@ -64,10 +64,11 @@ class MutasiStokController extends Controller
         $request->validate([
             'id_barang' => 'required|integer|exists:barangs,id',
             'jumlah_minta' => 'required|integer|min:1',
+            'id_cabang_tujuan' => 'nullable|integer|exists:cabangs,id',
             'catatan' => 'nullable|string',
         ]);
 
-        $idCabang = $request->user()->id_cabang ?? $request->input('id_cabang_tujuan');
+        $idCabang = $request->input('id_cabang_tujuan') ?? $request->user()->id_cabang;
         if (!$idCabang) {
             return $this->errorResponse('ID Cabang tujuan tidak ditentukan.', 400);
         }

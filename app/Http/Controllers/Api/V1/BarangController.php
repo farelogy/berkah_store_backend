@@ -47,7 +47,22 @@ class BarangController extends Controller
             }
         }]);
 
-        $barangs = $query->orderBy('nama_barang', 'asc')->paginate($request->input('per_page', 30));
+        if ($request->boolean('all') || $request->input('per_page') === 'all') {
+            $barangs = $query->orderBy('nama_barang', 'asc')->get();
+            $barangs->transform(function ($item) {
+                $stokModel = $item->stoks->first();
+                $item->stok_saat_ini = $stokModel ? (int) $stokModel->stok : 0;
+                unset($item->stoks);
+                return $item;
+            });
+            return $this->successResponse($barangs);
+        }
+
+        $perPage = (int) $request->input('per_page', 30);
+        if ($perPage <= 0) {
+            $perPage = 30;
+        }
+        $barangs = $query->orderBy('nama_barang', 'asc')->paginate($perPage);
 
         // Format each item with single `stok_saat_ini`
         $barangs->getCollection()->transform(function ($item) {
@@ -77,8 +92,14 @@ class BarangController extends Controller
         ]);
 
         return DB::transaction(function () use ($request) {
+            $kodeBarang = $request->kode_barang;
+            if (empty($kodeBarang)) {
+                $maxId = Barang::max('id') ?? 0;
+                $kodeBarang = 'BRG-' . str_pad($maxId + 1, 4, '0', STR_PAD_LEFT);
+            }
+
             $barang = Barang::create([
-                'kode_barang' => $request->kode_barang,
+                'kode_barang' => $kodeBarang,
                 'nama_barang' => $request->nama_barang,
                 'kategori' => $request->kategori ?? 'Umum',
                 'satuan' => $request->satuan ?? 'Pcs',

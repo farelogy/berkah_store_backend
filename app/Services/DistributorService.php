@@ -122,13 +122,9 @@ class DistributorService
                 throw new InvalidArgumentException("Nominal pembayaran melebihi sisa utang nota (sisa: {$nota->sisa_utang}, bayar: {$jumlahBayar}).");
             }
 
-            // 1. Check and deduct Kas Pusat
+            // 1. Check and deduct Kas Pusat (catatan pengeluaran kas pusat)
             $kasPusat = KasPusat::firstOrCreate(['id' => 1], ['saldo' => 0]);
             $kasPusat = KasPusat::where('id', $kasPusat->id)->lockForUpdate()->first();
-
-            if ((float) $kasPusat->saldo < $jumlahBayar) {
-                throw new RuntimeException("Saldo Kas Pusat tidak mencukupi untuk pembayaran ini (tersedia: {$kasPusat->saldo}, diminta: {$jumlahBayar}).");
-            }
 
             $kasPusat->saldo -= $jumlahBayar;
             $kasPusat->save();
