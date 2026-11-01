@@ -21,7 +21,10 @@ class PiutangService
         $query = Pembeli::where('sisa_piutang', '>', 0);
 
         if ($idCabang) {
-            $query->where('id_cabang_pendaftaran', $idCabang);
+            $query->where(function ($q) use ($idCabang) {
+                $q->where('id_cabang_pendaftaran', $idCabang)
+                  ->orWhereNull('id_cabang_pendaftaran');
+            });
         }
 
         if ($search) {
