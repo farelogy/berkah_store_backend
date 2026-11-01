@@ -40,7 +40,17 @@ class SetoranKas extends Model
         return $this->belongsTo(User::class, 'id_user_penyetor');
     }
 
+    public function userPenyetor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'id_user_penyetor');
+    }
+
     public function penerima(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'id_user_penerima');
+    }
+
+    public function userPenerima(): BelongsTo
     {
         return $this->belongsTo(User::class, 'id_user_penerima');
     }
